@@ -67,6 +67,10 @@ fn main() {
 
     let mut current_section: Option<Section> = None;
 
+    let mut inside_title = false;
+    let mut inside_paragraph = false;
+    let mut inside_book_title = false;
+
     while index < tokens.len() {
         let token = tokens[index].as_str();
 
@@ -76,8 +80,8 @@ fn main() {
             },
             "</section>" => {
                 match current_section {
-                    Some(value) => {
-                        book.sections.push(value.clone());
+                    Some(v) => {
+                        book.sections.push(v);
                     },
                     None => {
                         eprintln!("Found {} tag but current section is not found", token);
@@ -85,10 +89,39 @@ fn main() {
                 }
                 current_section = None;
             },
+            "<title>" => inside_title = true,
+            "</title>" => inside_title = false,
+
+            "<p>" => inside_paragraph = true,
+            "</p>" => inside_paragraph = false,
+
+            "<book-title>" => inside_book_title = true,
+            "</book-title>" => inside_book_title = false,
+
             _ => {
-                eprintln!("Unknown token: {}", token);
+                if inside_book_title {
+                    book.title = token.to_string();
+                }
+
+                else if inside_paragraph {
+                    if let Some(ref mut s) = current_section {
+                        // Note: Title could be inside of section and book itself
+                        if inside_title {
+                            s.title.push_str(&token.to_string());
+                        }
+
+                        else {
+                            s.paragraph.push(token.to_string());
+                        }
+                    }
+                }
+
+                if token.starts_with("<") {
+                    eprintln!("Unknown token: {}", token);
+                }
             }
         }
+
 
         index += 1;
     }
